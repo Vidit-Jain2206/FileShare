@@ -59,6 +59,7 @@ export const registerUser = async (
     const options = {
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       httpOnly: true,
+      secure: true,
     };
 
     res.cookie("access_token", token, options);
@@ -104,6 +105,7 @@ export const loginUser = async (req: Request, res: Response) => {
     const options = {
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       httpOnly: true,
+      secure: true,
     };
 
     res.cookie("access_token", token, options);
