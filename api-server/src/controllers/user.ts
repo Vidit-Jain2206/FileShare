@@ -5,6 +5,8 @@ import { Request, Response } from "express";
 import { hashPassword, isPasswordEqual } from "../utils/hashpasswords";
 import stream from "stream";
 import { getFileFromS3, uploadfiletos3 } from "../utils/aws";
+import crypto from "crypto";
+import { getEncrptkey } from "../utils/encryption";
 interface UserInput {
   username: string;
   email: string;
@@ -134,24 +136,32 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
+    const key = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(16);
+
     const passThroughStream = new stream.PassThrough();
+    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
 
-    const key = `${user.id}/${file.originalname}- ${Date.now()}`;
-
+    const s3key = `${user.id}/${file.originalname}- ${Date.now()}`;
+    const encryptedStream = passThroughStream.pipe(cipher);
     const response = await uploadfiletos3(
-      passThroughStream,
-      key,
+      encryptedStream,
+      s3key,
       file.mimetype
     );
 
     passThroughStream.end(file.buffer);
 
+    const { encrypted, iv: keyIV } = await getEncrptkey(key.toString("hex"));
+
     const userUploadedFile = await client.file.create({
       data: {
-        s3Key: key,
+        s3Key: s3key,
         filename: file.originalname,
         userId: user.id,
         visibleTo: "PRIVATE",
+        encryptedKey: encrypted,
+        iv: keyIV,
       },
     });
     if (!userUploadedFile) {

@@ -18,6 +18,8 @@ const tokens_1 = require("../utils/tokens");
 const hashpasswords_1 = require("../utils/hashpasswords");
 const stream_1 = __importDefault(require("stream"));
 const aws_1 = require("../utils/aws");
+const crypto_1 = __importDefault(require("crypto"));
+const encryption_1 = require("../utils/encryption");
 const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Validate req.body
@@ -128,16 +130,23 @@ const uploadfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (!file) {
             return res.status(400).json({ error: "No file uploaded" });
         }
+        const key = crypto_1.default.randomBytes(32);
+        const iv = crypto_1.default.randomBytes(16);
         const passThroughStream = new stream_1.default.PassThrough();
-        const key = `${user.id}/${file.originalname}- ${Date.now()}`;
-        const response = yield (0, aws_1.uploadfiletos3)(passThroughStream, key, file.mimetype);
+        const cipher = crypto_1.default.createCipheriv("aes-256-cbc", key, iv);
+        const s3key = `${user.id}/${file.originalname}- ${Date.now()}`;
+        const encryptedStream = passThroughStream.pipe(cipher);
+        const response = yield (0, aws_1.uploadfiletos3)(encryptedStream, s3key, file.mimetype);
         passThroughStream.end(file.buffer);
+        const { encrypted, iv: keyIV } = yield (0, encryption_1.getEncrptkey)(key.toString("hex"));
         const userUploadedFile = yield client_1.client.file.create({
             data: {
-                s3Key: key,
+                s3Key: s3key,
                 filename: file.originalname,
                 userId: user.id,
                 visibleTo: "PRIVATE",
+                encryptedKey: encrypted,
+                iv: keyIV,
             },
         });
         if (!userUploadedFile) {

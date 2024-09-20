@@ -28,6 +28,8 @@ model File {
   userId     String
   user       User    @relation(fields: [userId], references: [id])
   visibleTo  Visible
+  key        String 
+  iv         String 
 }
 
 enum Visible {

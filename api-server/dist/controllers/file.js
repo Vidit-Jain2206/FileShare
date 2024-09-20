@@ -30,14 +30,14 @@ const getFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             throw new Error("File is not publicly available");
         }
         // get the file from s3 and stream it to response
-        // const s3Stream = await getFileFromS3(file);
-        // s3Stream.pipe(res);
-        // s3Stream.on("error", (err) => {
-        //   console.error("Error streaming file from S3:", err);
-        //   res.status(500).json({ message: "Error retrieving file" });
-        // });
-        const url = yield (0, aws_1.getPresignedUrl)(file);
-        res.redirect(url);
+        const s3Stream = yield (0, aws_1.getFileFromS3)(file);
+        s3Stream.pipe(res);
+        s3Stream.on("error", (err) => {
+            console.error("Error streaming file from S3:", err);
+            res.status(500).json({ message: "Error retrieving file" });
+        });
+        // const url = await getPresignedUrl(file);
+        // res.redirect(url);
     }
     catch (error) {
         res.status(500).json({ message: error.message || "Internal server error" });
