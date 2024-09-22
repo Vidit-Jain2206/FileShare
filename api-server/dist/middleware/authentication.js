@@ -15,11 +15,11 @@ const authenticateJwt = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
     try {
         const token = req.cookies["access_token"];
         if (!token) {
-            throw new Error("Not Authenticated");
+            throw new Error("Not Authenticated. Please Login");
         }
         const user = (0, tokens_1.verifyToken)(token);
         if (!user) {
-            throw new Error("Not Authenticated");
+            throw new Error("Not Authenticated. Please Login");
         }
         req.user = user;
         next();

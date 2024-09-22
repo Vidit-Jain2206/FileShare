@@ -12,14 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeFileStatus = exports.uploadfile = exports.loginUser = exports.registerUser = void 0;
+exports.getAllFiles = exports.uploadfile = exports.loginUser = exports.registerUser = void 0;
 const client_1 = require("../client");
 const tokens_1 = require("../utils/tokens");
 const hashpasswords_1 = require("../utils/hashpasswords");
 const stream_1 = __importDefault(require("stream"));
 const aws_1 = require("../utils/aws");
-const crypto_1 = __importDefault(require("crypto"));
-const encryption_1 = require("../utils/encryption");
 const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Validate req.body
@@ -56,6 +54,7 @@ const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const options = {
             expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             httpOnly: true,
+            secure: true,
         };
         res.cookie("access_token", token, options);
         res.status(201).json({
@@ -101,6 +100,7 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const options = {
             expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             httpOnly: true,
+            secure: true,
         };
         res.cookie("access_token", token, options);
         res.status(201).json({
@@ -130,62 +130,79 @@ const uploadfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (!file) {
             return res.status(400).json({ error: "No file uploaded" });
         }
-        const key = crypto_1.default.randomBytes(32);
-        const iv = crypto_1.default.randomBytes(16);
         const passThroughStream = new stream_1.default.PassThrough();
-        const cipher = crypto_1.default.createCipheriv("aes-256-cbc", key, iv);
-        const s3key = `${user.id}/${file.originalname}- ${Date.now()}`;
-        const encryptedStream = passThroughStream.pipe(cipher);
-        const response = yield (0, aws_1.uploadfiletos3)(encryptedStream, s3key, file.mimetype);
-        passThroughStream.end(file.buffer);
-        const { encrypted, iv: keyIV } = yield (0, encryption_1.getEncrptkey)(key.toString("hex"));
-        const userUploadedFile = yield client_1.client.file.create({
-            data: {
-                s3Key: s3key,
-                filename: file.originalname,
-                userId: user.id,
-                visibleTo: "PRIVATE",
-                encryptedKey: encrypted,
-                iv: keyIV,
-            },
+        const s3key = `${user.id}/${file.originalname}`;
+        const isFileExist = yield client_1.client.file.findFirst({
+            where: { s3Key: s3key },
         });
-        if (!userUploadedFile) {
-            throw new Error("Failed to save file to database");
+        if (isFileExist) {
+            throw new Error("File already exists");
         }
-        return res.status(200).json({ message: "Uploads successfully uploaded" });
-        // Pipe the file from Multer's buffer to the PassThrough stream to S3
+        const transaction = yield client_1.client.$transaction((prisma) => __awaiter(void 0, void 0, void 0, function* () {
+            const userUploadedFile = yield prisma.file.create({
+                data: {
+                    s3Key: s3key,
+                    filename: file.originalname,
+                    userId: user.id,
+                    visibleTo: "PRIVATE",
+                    key: "FEW",
+                    iv: "Dw",
+                    status: "PENDING",
+                },
+            });
+            try {
+                const s3UploadPromise = (0, aws_1.uploadfiletos3)(passThroughStream, s3key, file.mimetype);
+                const s3Response = yield s3UploadPromise;
+                yield prisma.file.update({
+                    where: { id: userUploadedFile.id },
+                    data: { status: "COMPLETED" },
+                });
+                passThroughStream.end(file.buffer);
+                return { s3Response, userUploadedFile };
+            }
+            catch (s3Error) {
+                yield prisma.file.update({
+                    where: { id: userUploadedFile.id },
+                    data: { status: "FAILED" },
+                });
+                throw new Error("S3 upload failed. Transaction rolled back.");
+            }
+        }));
+        return res.status(200).json({
+            message: "File successfully uploaded and saved",
+        });
     }
     catch (error) {
-        res.status(500).json({ error: error.message || "Somethig failed" });
+        res.status(500).json({ error: error.message || "Something failed" });
     }
 });
 exports.uploadfile = uploadfile;
-const changeFileStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllFiles = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const user = req.user;
         if (!user) {
             throw new Error("User not found");
         }
-        const { fileId, status } = req.body;
-        if (!fileId || !status) {
-            throw new Error("Invalid request body");
-        }
-        const file = yield client_1.client.file.findFirst({
-            where: { id: fileId, userId: user.id },
+        const files = yield client_1.client.file.findMany({
+            where: { userId: user.id },
         });
-        if (!file) {
-            throw new Error("File not found or not belong to the user");
+        if (!files || files.length === 0) {
+            return res.status(404).json({ message: "No files found. Upload files" });
         }
-        yield client_1.client.file.update({
-            where: { id: fileId },
-            data: { visibleTo: status },
+        const newFiles = files
+            .filter((file) => file.status === "COMPLETED")
+            .map((file) => {
+            return {
+                id: file.id,
+                filename: file.filename,
+                fileUrl: `http://localhost:8000/files/private/${file.id}`,
+                visibility: file.visibleTo,
+            };
         });
-        return res
-            .status(200)
-            .json({ message: "File status updated successfully" });
+        res.status(200).json(newFiles);
     }
     catch (error) {
         res.status(500).json({ error: error.message || "Somethig failed" });
     }
 });
-exports.changeFileStatus = changeFileStatus;
+exports.getAllFiles = getAllFiles;

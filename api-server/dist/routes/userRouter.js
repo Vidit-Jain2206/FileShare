@@ -13,4 +13,4 @@ exports.userRouter = (0, express_1.Router)();
 exports.userRouter.post("/register", user_1.registerUser);
 exports.userRouter.post("/login", user_1.loginUser);
 exports.userRouter.post("/uploads", authentication_1.authenticateJwt, upload.single("file"), user_1.uploadfile);
-exports.userRouter.post("/change-status", authentication_1.authenticateJwt, user_1.changeFileStatus);
+exports.userRouter.get("/files", authentication_1.authenticateJwt, user_1.getAllFiles);

@@ -140,7 +140,15 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const passThroughStream = new stream.PassThrough();
-    const s3key = `${user.id}/${file.originalname}-${Date.now()}`;
+    const s3key = `${user.id}/${file.originalname}`;
+
+    const isFileExist = await client.file.findFirst({
+      where: { s3Key: s3key },
+    });
+
+    if (isFileExist) {
+      throw new Error("File already exists");
+    }
 
     const transaction = await client.$transaction(async (prisma) => {
       const userUploadedFile = await prisma.file.create({
