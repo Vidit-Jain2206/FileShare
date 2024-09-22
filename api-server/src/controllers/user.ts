@@ -130,6 +130,7 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const file = req.file;
     const user = req.user;
+
     if (!user) {
       throw new Error("User not found");
     }
@@ -138,71 +139,79 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const key = crypto.randomBytes(32);
-    const iv = crypto.randomBytes(16);
-
     const passThroughStream = new stream.PassThrough();
-    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+    const s3key = `${user.id}/${file.originalname}-${Date.now()}`;
 
-    const s3key = `${user.id}/${file.originalname}- ${Date.now()}`;
-    const encryptedStream = passThroughStream.pipe(cipher);
-    const response = await uploadfiletos3(
-      encryptedStream,
-      s3key,
-      file.mimetype
-    );
+    const transaction = await client.$transaction(async (prisma) => {
+      const userUploadedFile = await prisma.file.create({
+        data: {
+          s3Key: s3key,
+          filename: file.originalname,
+          userId: user.id,
+          visibleTo: "PRIVATE",
+          key: "FEW",
+          iv: "Dw",
+          status: "PENDING",
+        },
+      });
 
-    passThroughStream.end(file.buffer);
+      try {
+        const s3UploadPromise = uploadfiletos3(
+          passThroughStream,
+          s3key,
+          file.mimetype
+        );
 
-    const { encrypted, iv: keyIV } = await getEncrptkey(key.toString("hex"));
+        const s3Response = await s3UploadPromise;
 
-    const userUploadedFile = await client.file.create({
-      data: {
-        s3Key: s3key,
-        filename: file.originalname,
-        userId: user.id,
-        visibleTo: "PRIVATE",
-        encryptedKey: encrypted,
-        iv: keyIV,
-      },
+        await prisma.file.update({
+          where: { id: userUploadedFile.id },
+          data: { status: "COMPLETED" },
+        });
+
+        passThroughStream.end(file.buffer);
+
+        return { s3Response, userUploadedFile };
+      } catch (s3Error) {
+        await prisma.file.update({
+          where: { id: userUploadedFile.id },
+          data: { status: "FAILED" },
+        });
+
+        throw new Error("S3 upload failed. Transaction rolled back.");
+      }
     });
-    if (!userUploadedFile) {
-      throw new Error("Failed to save file to database");
-    }
-    return res.status(200).json({ message: "Uploads successfully uploaded" });
-    // Pipe the file from Multer's buffer to the PassThrough stream to S3
+
+    return res.status(200).json({
+      message: "File successfully uploaded and saved",
+    });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || "Somethig failed" });
+    res.status(500).json({ error: error.message || "Something failed" });
   }
 };
 
-export const changeFileStatus = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
+export const getAllFiles = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) {
       throw new Error("User not found");
     }
-    const { fileId, status } = req.body;
-    if (!fileId || !status) {
-      throw new Error("Invalid request body");
-    }
-
-    const file = await client.file.findFirst({
-      where: { id: fileId, userId: user.id },
+    const files = await client.file.findMany({
+      where: { userId: user.id },
     });
-    if (!file) {
-      throw new Error("File not found or not belong to the user");
+    if (!files || files.length === 0) {
+      return res.status(404).json({ message: "No files found. Upload files" });
     }
-    await client.file.update({
-      where: { id: fileId },
-      data: { visibleTo: status },
-    });
-    return res
-      .status(200)
-      .json({ message: "File status updated successfully" });
+    const newFiles = files
+      .filter((file) => file.status === "COMPLETED")
+      .map((file) => {
+        return {
+          id: file.id,
+          filename: file.filename,
+          fileUrl: `http://localhost:8000/files/private/${file.id}`,
+        };
+      });
+    res.status(200).json(newFiles);
   } catch (error: any) {
     res.status(500).json({ error: error.message || "Somethig failed" });
   }
