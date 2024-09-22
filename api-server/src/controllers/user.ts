@@ -209,6 +209,7 @@ export const getAllFiles = async (req: AuthenticatedRequest, res: Response) => {
           id: file.id,
           filename: file.filename,
           fileUrl: `http://localhost:8000/files/private/${file.id}`,
+          visibility: file.visibleTo,
         };
       });
     res.status(200).json(newFiles);

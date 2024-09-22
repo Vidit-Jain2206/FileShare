@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import { Link } from "react-router-dom";
 const Dashboard = () => {
   const [files, setFiles] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -10,11 +10,38 @@ const Dashboard = () => {
 
   // Dummy files for testing
   const dummyFiles = [
-    { id: 1, name: "Document 1.pdf", status: "Public" },
-    { id: 2, name: "Image 2.jpg", status: "Private" },
-    { id: 3, name: "Presentation 3.pptx", status: "Public" },
-    { id: 4, name: "Spreadsheet 4.xlsx", status: "Private" },
-    { id: 5, name: "Report 5.docx", status: "Public" },
+    {
+      id: 1,
+      name: "Document 1.pdf",
+      visibility: "PUBLIC",
+      publicUrl: "http://www.google.com",
+      fileUrl: "https://www.youtube.com",
+    },
+    {
+      id: 2,
+      name: "Image 2.jpg",
+      visibility: "PUBLIC",
+      publicUrl: "http://www.google.com",
+      fileUrl: "https://www.youtube.com",
+    },
+    {
+      id: 3,
+      name: "Presentation 3.pptx",
+      visibility: "PRIVATE",
+      fileUrl: "https://www.youtube.com",
+    },
+    {
+      id: 4,
+      name: "Spreadsheet 4.xlsx",
+      visibility: "PRIVATE",
+      fileUrl: "https://www.youtube.com",
+    },
+    {
+      id: 5,
+      name: "Report 5.docx",
+      visibility: "PRIVATE",
+      fileUrl: "https://www.youtube.com",
+    },
   ];
 
   useEffect(() => {
@@ -49,23 +76,32 @@ const Dashboard = () => {
     handleCloseModal();
   };
 
-  // Function to handle the change in file privacy status
-  const handleFileStatusChange = async (fileId, newStatus) => {
+  // Function to handle the change in file privacy visibility
+  const handleFilevisibilityChange = async (fileId, newvisibility) => {
     setLoading(fileId); // Show loader for this file
     try {
       // Simulate an API request
       console.log(
-        `Sending API request for file ID: ${fileId}, new status: ${newStatus}`
+        `Sending API request for file ID: ${fileId}, new visibility: ${newvisibility}`
       );
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate a 2-second API request
-      // Update file status after successful request
+      const response = await new Promise((resolve) =>
+        setTimeout(resolve, 2000)
+      ); // Simulate a 2-second API request
+      // Update file visibility after successful request
+
       setFiles((prevFiles) =>
         prevFiles.map((file) =>
-          file.id === fileId ? { ...file, status: newStatus } : file
+          file.id === fileId
+            ? {
+                ...file,
+                visibility: newvisibility,
+                publicUrl: newvisibility === "PUBLIC" ? response.publicURL : "",
+              }
+            : file
         )
       );
     } catch (error) {
-      console.error("Error updating file status:", error);
+      console.error("Error updating file visibility:", error);
     } finally {
       setLoading(null); // Hide loader after request is completed
     }
@@ -108,26 +144,45 @@ const Dashboard = () => {
               files.map((file) => (
                 <div
                   key={file.id}
-                  className="p-2 border-b border-gray-300 flex justify-between items-center"
+                  className="p-2 border-b border-gray-300 grid grid-cols-2 place-items-start
+                  "
                 >
-                  <span>{file.name}</span>
-                  <div className="flex items-center space-x-4">
-                    {/* Loader for the current file */}
-                    {loading === file.id && (
-                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-600"></div>
+                  <Link
+                    to={file.fileUrl}
+                    className="hover:underline hover:text-blue-500"
+                  >
+                    {file.name}
+                  </Link>
+                  <div className="flex flex-row justify-between w-full">
+                    {file.visibility === "PUBLIC" ? (
+                      <Link
+                        target="_blank"
+                        to={file.publicUrl}
+                        className="hover:underline text-blue-400"
+                      >
+                        Public Link
+                      </Link>
+                    ) : (
+                      <a></a>
                     )}
-                    {/* Dropdown for Public/Private selection */}
-                    <select
-                      className="px-2 py-1 border border-gray-300 rounded-md text-red-600 bg-white hover:bg-red-100 focus:ring-2 focus:ring-red-600 outline-none selection:outline-none"
-                      value={file.status}
-                      onChange={(e) =>
-                        handleFileStatusChange(file.id, e.target.value)
-                      }
-                      disabled={loading === file.id} // Disable dropdown while loading
-                    >
-                      <option value="Public">Public</option>
-                      <option value="Private">Private</option>
-                    </select>
+                    <div className="flex items-center space-x-4">
+                      {/* Loader for the current file */}
+                      {loading === file.id && (
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-red-600"></div>
+                      )}
+                      {/* Dropdown for Public/Private selection */}
+                      <select
+                        className="px-2 py-1 border border-gray-300 rounded-md text-red-600 bg-white hover:bg-red-100 focus:ring-2 focus:ring-red-600 outline-none selection:outline-none"
+                        value={file.visibility}
+                        onChange={(e) =>
+                          handleFilevisibilityChange(file.id, e.target.value)
+                        }
+                        disabled={loading === file.id} // Disable dropdown while loading
+                      >
+                        <option value="PUBLIC">Public</option>
+                        <option value="PRIVATE">Private</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               ))
