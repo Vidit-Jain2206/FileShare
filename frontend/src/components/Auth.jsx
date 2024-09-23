@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { login, register } from "../api/authentication";
+import useAuth from "../hooks/useAuth";
 const AuthPage = ({ setToast }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
@@ -11,13 +12,18 @@ const AuthPage = ({ setToast }) => {
   });
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
+  const { isAuthenticated, loginUser, registerUser } = useAuth();
 
-  // Handle form changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Basic validation
   const validateForm = () => {
     let errors = {};
     if (isRegister && !formData.username)
@@ -28,7 +34,6 @@ const AuthPage = ({ setToast }) => {
     return errors;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
@@ -37,17 +42,12 @@ const AuthPage = ({ setToast }) => {
       if (isRegister) {
         // means user is registering
         try {
-          const response = await register(formData);
-          if (response.status === 201) {
-            setToast({
-              color: "green",
-              title: "Success",
-              message: "User registration successful",
-            });
-            navigate("/dashboard");
-          } else {
-            throw new Error(response.data.message);
-          }
+          const response = await registerUser(formData);
+          setToast({
+            color: "green",
+            title: "Success",
+            message: "Registration successful",
+          });
         } catch (error) {
           setToast({
             color: "red",
@@ -58,17 +58,12 @@ const AuthPage = ({ setToast }) => {
       } else {
         // means user is logging in
         try {
-          const response = await login(formData);
-          if (response.status === 201) {
-            setToast({
-              color: "green",
-              title: "Success",
-              message: "User registration successful",
-            });
-            navigate("/dashboard");
-          } else {
-            throw new Error(response.data.message);
-          }
+          const response = await loginUser(formData);
+          setToast({
+            color: "green",
+            title: "Success",
+            message: "Login Successfully",
+          });
         } catch (error) {
           setToast({
             color: "red",
