@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-const AuthPage = () => {
+import { login, register } from "../api/authentication";
+const AuthPage = ({ setToast }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -27,8 +28,6 @@ const AuthPage = () => {
     return errors;
   };
 
-  console.log(formData);
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,28 +37,44 @@ const AuthPage = () => {
       if (isRegister) {
         // means user is registering
         try {
-          const response = await axios.post("/users/register", formData);
-          if (response.status === 200) {
-            alert("User registration successful");
-            navigate("/dashbaord");
+          const response = await register(formData);
+          if (response.status === 201) {
+            setToast({
+              color: "green",
+              title: "Success",
+              message: "User registration successful",
+            });
+            navigate("/dashboard");
           } else {
             throw new Error(response.data.message);
           }
         } catch (error) {
-          alert(error.message);
+          setToast({
+            color: "red",
+            title: "Error",
+            message: error.message,
+          });
         }
       } else {
         // means user is logging in
         try {
-          const response = await axios.post("/users/login", formData);
-          if (response.status === 200) {
-            alert("User login successful");
-            navigate("/dashbaord");
+          const response = await login(formData);
+          if (response.status === 201) {
+            setToast({
+              color: "green",
+              title: "Success",
+              message: "User registration successful",
+            });
+            navigate("/dashboard");
           } else {
             throw new Error(response.data.message);
           }
         } catch (error) {
-          alert(error.message);
+          setToast({
+            color: "red",
+            title: "Error",
+            message: error.message,
+          });
         }
       }
     } else {
