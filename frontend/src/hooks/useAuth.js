@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { login, register } from "../api/authentication";
+import { login, logout, register } from "../api/authentication";
 
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -11,7 +11,9 @@ const useAuth = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await axios.get("/api/auth/check");
+        const response = await axios.get("http://localhost:3000/auth/check", {
+          withCredentials: true,
+        });
         if (response.status === 200) {
           setIsAuthenticated(true);
         } else {
@@ -24,8 +26,7 @@ const useAuth = () => {
       }
     };
 
-    // checkAuth();
-    setLoading(false);
+    checkAuth();
   }, []);
 
   const loginUser = async (formData) => {
@@ -52,9 +53,16 @@ const useAuth = () => {
     }
   };
 
-  const logoutUser = () => {
-    setIsAuthenticated(false);
-    navigate("/");
+  const logoutUser = async () => {
+    try {
+      const response = await logout();
+      setIsAuthenticated(false);
+      navigate("/");
+      return response;
+    } catch (error) {
+      setIsAuthenticated(true);
+      throw new Error(error.message);
+    }
   };
 
   useEffect(() => {

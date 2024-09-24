@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { login, register } from "../api/authentication";
 import useAuth from "../hooks/useAuth";
+
 const AuthPage = ({ setToast }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ const AuthPage = ({ setToast }) => {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const { isAuthenticated, loginUser, registerUser } = useAuth();
+  console.log("Authenticated", isAuthenticated);
 
   useEffect(() => {
     if (isAuthenticated) {

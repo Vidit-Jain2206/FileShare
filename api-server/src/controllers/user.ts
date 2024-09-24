@@ -105,16 +105,34 @@ export const loginUser = async (req: Request, res: Response) => {
     const options = {
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       httpOnly: true,
-      secure: true,
+      sameSite: "None",
     };
 
-    res.cookie("access_token", token, options);
+    res.cookie("access_token", token, {
+      httpOnly: true, // Ensures the cookie is only accessible by the web server
+      secure: false, // Set false when testing locally on http
+      sameSite: "lax", // Adjust based on your needs. 'Lax' works well for most cases
+    });
     res.status(201).json({
       id: isUserExists.id,
       username: isUserExists.username,
       email: isUserExists.email,
       token: token,
     });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const logout = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+    res.clearCookie("access_token");
+    return res.status(200).json({ message: "Logout successfully" });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

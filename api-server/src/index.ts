@@ -7,15 +7,22 @@ import { fileRouter } from "./routes/fileRouter";
 import crypto from "crypto";
 import multer from "multer";
 import cors from "cors";
+import { authRouter } from "./routes/authRouter";
 const app = express();
 
 app.use(statusMonitor());
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173/",
+    credentials: true,
+  })
+);
 
 app.use("/users", userRouter);
 app.use("/files", fileRouter);
+app.use("/auth", authRouter);
 
 const upload = multer();
 

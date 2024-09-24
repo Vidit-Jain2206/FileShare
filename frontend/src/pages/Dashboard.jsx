@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import useAuth from "../hooks/useAuth";
 
 const Dashboard = () => {
   const [files, setFiles] = useState([]);
@@ -9,7 +10,7 @@ const Dashboard = () => {
   const [formData, setFormData] = useState({ password: "", email: "" });
   const [loading, setLoading] = useState(null); // Track loading state for each file
   const [fileUploadError, setFileUploadError] = useState(""); // Error message for file upload
-
+  const { logoutUser } = useAuth();
   // Dummy files for testing
   const dummyFiles = [
     {
@@ -115,6 +116,12 @@ const Dashboard = () => {
                 className="block px-4 py-2 text-gray-800 hover:bg-gray-200 w-full text-left"
               >
                 Forgot Password
+              </button>
+              <button
+                onClick={() => logoutUser()}
+                className="block px-4 py-2 text-gray-800 hover:bg-gray-200 w-full text-left"
+              >
+                Logout
               </button>
             </div>
           )}
