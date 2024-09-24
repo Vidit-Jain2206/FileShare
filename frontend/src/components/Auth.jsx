@@ -14,7 +14,6 @@ const AuthPage = ({ setToast }) => {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const { isAuthenticated, loginUser, registerUser } = useAuth();
-  console.log("Authenticated", isAuthenticated);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -50,6 +49,7 @@ const AuthPage = ({ setToast }) => {
             title: "Success",
             message: "Registration successful",
           });
+          navigate("/dashboard");
         } catch (error) {
           setToast({
             color: "red",
@@ -66,6 +66,7 @@ const AuthPage = ({ setToast }) => {
             title: "Success",
             message: "Login Successfully",
           });
+          navigate("/dashboard");
         } catch (error) {
           setToast({
             color: "red",

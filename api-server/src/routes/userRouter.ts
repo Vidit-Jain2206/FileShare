@@ -14,6 +14,6 @@ export const userRouter = Router();
 
 userRouter.post("/register", registerUser);
 userRouter.post("/login", loginUser);
-userRouter.post("/logout", authenticateJwt, logout);
+userRouter.post("/logout", logout);
 userRouter.post("/uploads", authenticateJwt, upload.single("file"), uploadfile);
 userRouter.get("/files", authenticateJwt, getAllFiles);

@@ -126,11 +126,6 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const logout = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const user = req.user;
-
-    if (!user) {
-      throw new Error("User not found");
-    }
     res.clearCookie("access_token");
     return res.status(200).json({ message: "Logout successfully" });
   } catch (error: any) {

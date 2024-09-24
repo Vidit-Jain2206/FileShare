@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { login, logout, register } from "../api/authentication";
@@ -33,7 +33,6 @@ const useAuth = () => {
     try {
       const response = await login(formData);
       setIsAuthenticated(true);
-      navigate("/dashboard");
       return response;
     } catch (error) {
       setIsAuthenticated(false);
@@ -45,7 +44,6 @@ const useAuth = () => {
     try {
       const response = await register(formData);
       setIsAuthenticated(true);
-      navigate("/dashboard");
       return response;
     } catch (error) {
       setIsAuthenticated(false);
@@ -65,21 +63,14 @@ const useAuth = () => {
     }
   };
 
-  useEffect(() => {
-    const axiosInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response.status === 401) {
-          logoutUser();
-          navigate("/");
-        }
-        return Promise.reject(error);
-      }
-    );
-    return () => axios.interceptors.response.eject(axiosInterceptor);
-  }, []);
-
-  return { isAuthenticated, loginUser, registerUser, logoutUser, loading };
+  return {
+    isAuthenticated,
+    setIsAuthenticated,
+    loginUser,
+    registerUser,
+    logoutUser,
+    loading,
+  };
 };
 
 export default useAuth;
