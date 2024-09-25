@@ -14,10 +14,10 @@ function App() {
   useEffect(() => {
     if (toast.message) {
       const timer = setTimeout(() => {
-        setToast({ color: "", title: "", message: "" }); // Clear toast after 2 seconds
-      }, 2000); // 2 seconds
+        setToast({ color: "", title: "", message: "" });
+      }, 2000);
 
-      return () => clearTimeout(timer); // Clear the timeout if the component unmounts or toast changes
+      return () => clearTimeout(timer);
     }
   }, [toast, setToast]);
   return (

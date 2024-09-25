@@ -7,6 +7,7 @@ import { fileRouter } from "./routes/fileRouter";
 import crypto from "crypto";
 import multer from "multer";
 import cors from "cors";
+import path from "path";
 import { authRouter } from "./routes/authRouter";
 const app = express();
 
@@ -20,9 +21,15 @@ app.use(
   })
 );
 
+app.use(express.static(path.join(__dirname, "../../frontend/dist")));
+
 app.use("/users", userRouter);
 app.use("/files", fileRouter);
 app.use("/auth", authRouter);
+
+app.use("/*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
+});
 
 const upload = multer();
 

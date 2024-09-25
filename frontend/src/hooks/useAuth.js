@@ -11,7 +11,7 @@ const useAuth = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await axios.get("http://localhost:3000/auth/check", {
+        const response = await axios.get("/auth/check", {
           withCredentials: true,
         });
         if (response.status === 200) {
