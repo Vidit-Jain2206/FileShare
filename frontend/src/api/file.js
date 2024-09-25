@@ -26,3 +26,37 @@ export const uploadfile = async (file) => {
     );
   }
 };
+
+export const getAllFiles = async () => {
+  try {
+    const response = await apiClient.get(`${BASE_URL}/users/files`, {
+      withCredentials: true,
+    });
+    return response;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        error?.data?.message
+    );
+  }
+};
+
+export const changeVisibility = async (id, value) => {
+  try {
+    const response = await apiClient.put(
+      `${BASE_URL}/files/change-status`,
+      { status: value, fileId: id },
+      {
+        withCredentials: true,
+      }
+    );
+    return response;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        error?.data?.message
+    );
+  }
+};

@@ -10,4 +10,4 @@ export const fileRouter = Router();
 
 fileRouter.get("/public/:fileId", getFilePublic);
 fileRouter.get("/private/:fileId", authenticateJwt, getFilePrivate);
-fileRouter.post("/change-status", authenticateJwt, changeFileStatus);
+fileRouter.put("/change-status", authenticateJwt, changeFileStatus);

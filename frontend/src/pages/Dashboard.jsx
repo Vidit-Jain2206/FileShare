@@ -1,19 +1,52 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import { uploadfile as uploadFileAPI } from "../api/file";
+import {
+  changeVisibility,
+  getAllFiles,
+  uploadfile as uploadFileAPI,
+} from "../api/file";
 
 const Dashboard = ({ setToast }) => {
   const [files, setFiles] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false); // Track loading state for file upload
   const [fileUploadError, setFileUploadError] = useState(""); // Error message for file upload
+  const [loadingVisibility, setLoadingVisibility] = useState({}); // Loading state for visibility change
   const { isAuthenticated, setIsAuthenticated, logoutUser } = useAuth();
   const [uploadedFile, setUploadedFile] = useState(null); // Store the uploaded file
   const [fileName, setFileName] = useState(""); // Store the file name
   const navigate = useNavigate();
+
+  async function fetchFiles() {
+    try {
+      setLoading(true);
+      const response = await getAllFiles();
+      setFiles(response.data);
+      setLoading(false);
+    } catch (error) {
+      if (error.message === "Not Authenticated. Please Login") {
+        setIsAuthenticated(false);
+        setLoading(false);
+        setToast({
+          color: "red",
+          title: "Error",
+          message: "Not authenticated. Please login to upload files.",
+        });
+        navigate("/");
+        return;
+      }
+      setLoading(false);
+      setToast({
+        color: "red",
+        title: "Error",
+        message: "Failed to fetch files. Please try again later.",
+      });
+    }
+  }
+
   useEffect(() => {
-    // fetchfiles();
+    fetchFiles();
   }, []);
 
   const handleFileChange = (e) => {
@@ -46,6 +79,7 @@ const Dashboard = ({ setToast }) => {
         title: "Success",
         message: "File uploaded successfully!",
       });
+      fetchFiles(); // Refresh file list after successful upload
     } catch (error) {
       if (error.message === "Not Authenticated. Please Login") {
         setIsAuthenticated(false);
@@ -66,6 +100,39 @@ const Dashboard = ({ setToast }) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVisibilityChange = async (e, id) => {
+    const value = e.target.value;
+    setLoadingVisibility((prev) => ({ ...prev, [id]: true })); // Set loading for the specific file
+
+    try {
+      const response = await changeVisibility(id, value);
+      fetchFiles();
+      setToast({
+        color: "green",
+        title: "Success",
+        message: "Visibility updated successfully!",
+      });
+    } catch (error) {
+      if (error.message === "Not Authenticated. Please Login") {
+        setIsAuthenticated(false);
+        setToast({
+          color: "red",
+          title: "Error",
+          message: "Not authenticated. Please login again.",
+        });
+        navigate("/");
+        return;
+      }
+      setToast({
+        color: "red",
+        title: "Error",
+        message: error.message,
+      });
+    } finally {
+      setLoadingVisibility((prev) => ({ ...prev, [id]: false })); // Reset loading state
     }
   };
 
@@ -140,24 +207,51 @@ const Dashboard = ({ setToast }) => {
               files.map((file) => (
                 <div
                   key={file.id}
-                  className="p-2 border-b border-gray-300 grid grid-cols-2 place-items-start"
+                  className="p-2 border-b border-gray-300 grid grid-cols-3 place-items-start "
                 >
-                  <Link
-                    to={file.fileUrl || "#"}
-                    className="hover:underline hover:text-blue-500"
-                  >
-                    {file.name}
-                  </Link>
-                  <div className="flex items-center space-x-4">
+                  <div className="w-full h-full flex justify-start">
+                    <Link
+                      to={file.fileUrl}
+                      className="hover:underline hover:text-blue-500 "
+                    >
+                      {file.filename}
+                    </Link>
+                  </div>
+
+                  {/* Public link for PUBLIC files */}
+                  <div className="w-full h-full flex justify-center">
+                    {file.visibility === "PUBLIC" ? (
+                      <Link
+                        to={file.publicUrl}
+                        className="hover:underline text-red-600 hover:text-red-400  flex justify-center"
+                      >
+                        Public Link
+                      </Link>
+                    ) : (
+                      // Private link for PRIVATE files
+                      <Link
+                        to="#"
+                        className="hover:underline text-gray-600 hover:text-gray-400"
+                      />
+                    )}
+                  </div>
+
+                  <div className="w-full h-full flex justify-center items-center space-x-4">
                     {/* File visibility dropdown */}
                     <select
                       className="px-2 py-1 border border-gray-300 rounded-md text-red-600 bg-white hover:bg-red-100 focus:ring-2 focus:ring-red-600 outline-none"
-                      value={file.visibility || "PRIVATE"}
-                      disabled={loading}
+                      value={file.visibility}
+                      disabled={loadingVisibility[file.id]} // Disable dropdown when visibility is being changed
+                      onChange={(e) => handleVisibilityChange(e, file.id)}
                     >
                       <option value="PUBLIC">Public</option>
                       <option value="PRIVATE">Private</option>
                     </select>
+
+                    {/* Loader for visibility change */}
+                    {loadingVisibility[file.id] && (
+                      <div className="ml-2 w-4 h-4 border-2 border-t-red-600 border-gray-300 rounded-full animate-spin"></div>
+                    )}
                   </div>
                 </div>
               ))
