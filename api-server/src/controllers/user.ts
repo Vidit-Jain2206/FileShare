@@ -229,7 +229,6 @@ export const getAllFiles = async (req: AuthenticatedRequest, res: Response) => {
         return {
           id: file.id,
           filename: file.filename,
-          fileUrl: `http://localhost:8000/files/private/${file.id}`,
           publicUrl: `http://localhost:8000/files/public/${file.id}`,
           visibility: file.visibleTo,
         };

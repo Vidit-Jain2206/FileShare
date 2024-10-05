@@ -6,6 +6,7 @@ import {
   getAllFiles,
   uploadfile as uploadFileAPI,
 } from "../api/file";
+import { MdOutlineAccountCircle } from "react-icons/md";
 
 const Dashboard = ({ setToast }) => {
   const [files, setFiles] = useState([]);
@@ -147,13 +148,13 @@ const Dashboard = ({ setToast }) => {
         <h1 className="text-lg font-bold">My Dashboard</h1>
         <div className="relative">
           <button onClick={handleDropdownToggle} className="flex items-center">
-            <span className="material-icons">account_circle</span>
+            <MdOutlineAccountCircle className="w-[30px] h-[30px]" />
           </button>
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
               <button
                 onClick={() => logoutUser()}
-                className="block px-4 py-2 text-gray-800 hover:bg-gray-200 w-full text-left"
+                className="block px-4 py-2 text-gray-800 hover:bg-gray-200 w-full text-left rounded-md"
               >
                 Logout
               </button>
@@ -210,12 +211,7 @@ const Dashboard = ({ setToast }) => {
                   className="p-2 border-b border-gray-300 grid grid-cols-3 place-items-start "
                 >
                   <div className="w-full h-full flex justify-start">
-                    <Link
-                      to={file.fileUrl}
-                      className="hover:underline hover:text-blue-500 "
-                    >
-                      {file.filename}
-                    </Link>
+                    <Link className="">{file.filename}</Link>
                   </div>
 
                   {/* Public link for PUBLIC files */}
