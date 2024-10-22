@@ -1,6 +1,7 @@
 import { client } from "../client";
 
 import { Request, Response } from "express";
+import crypto from "crypto";
 
 import { getFileFromS3, getPresignedUrl } from "../utils/aws";
 
@@ -25,11 +26,27 @@ export const getFilePublic = async (req: Request, res: Response) => {
       throw new Error("File is not publicly available");
     }
     const s3Stream = await getFileFromS3(file);
-    s3Stream.pipe(res);
+    const key = Buffer.from(file.key, "hex");
+    const iv = Buffer.from(file.iv, "hex");
 
+    // Create a decipher stream for AES-256-CBC
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+
+    // Pipe the S3 stream through the decipher and then to the response
+    s3Stream
+      .pipe(decipher) // Decrypt the file stream
+      .pipe(res); // Pipe the decrypted stream to the response
+
+    // Error handling for the S3 stream
     s3Stream.on("error", (err) => {
       console.error("Error streaming file from S3:", err);
       res.status(500).json({ message: "Error retrieving file" });
+    });
+
+    // Error handling for the decipher stream
+    decipher.on("error", (err) => {
+      console.error("Error decrypting the file:", err);
+      res.status(500).json({ message: "Error decrypting file" });
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Internal server error" });
@@ -60,17 +77,20 @@ export const getFilePrivate = async (
       throw new Error("Unauthorized access");
     }
 
-    // get the file from s3 and stream it to response
     const s3Stream = await getFileFromS3(file);
-    s3Stream.pipe(res);
+    const key = Buffer.from(file.key, "hex");
+    const iv = Buffer.from(file.iv, "hex");
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
 
+    s3Stream.pipe(decipher).pipe(res);
     s3Stream.on("error", (err) => {
       console.error("Error streaming file from S3:", err);
       res.status(500).json({ message: "Error retrieving file" });
     });
-
-    // const url = await getPresignedUrl(file);
-    // res.redirect(url);
+    decipher.on("error", (err) => {
+      console.error("Error decrypting the file:", err);
+      res.status(500).json({ message: "Error decrypting file" });
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Internal server error" });
   }
@@ -101,7 +121,7 @@ export const changeFileStatus = async (
     });
     if (status === "PUBLIC") {
       return res.status(200).json({
-        publicURL: `https://localhost:8000/files/public/${fileId}`,
+        publicURL: `http://13.202.240.229/files/public/${fileId}`,
         message: "File status updated successfully",
       });
     }

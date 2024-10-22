@@ -9,14 +9,14 @@ const s3 = new AWS.S3({
 });
 
 export const uploadfiletos3 = async (
-  passthroughStream: Readable,
+  stream: Readable,
   key: string,
   mimetype: string
 ): Promise<any> => {
   const s3Params = {
     Bucket: process.env.AWS_BUCKET_NAME || "",
     Key: key,
-    Body: passthroughStream,
+    Body: stream,
     ContentType: mimetype,
   };
   s3.upload(s3Params, (err: any, data: any) => {

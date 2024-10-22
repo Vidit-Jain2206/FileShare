@@ -6,7 +6,6 @@ import { hashPassword, isPasswordEqual } from "../utils/hashpasswords";
 import stream from "stream";
 import { getFileFromS3, uploadfiletos3 } from "../utils/aws";
 import crypto from "crypto";
-import { getEncrptkey } from "../utils/encryption";
 interface UserInput {
   username: string;
   email: string;
@@ -152,7 +151,6 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const passThroughStream = new stream.PassThrough();
     const s3key = `${user.id}/${file.originalname}`;
 
     const isFileExist = await client.file.findFirst({
@@ -163,6 +161,13 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
       throw new Error("File already exists");
     }
 
+    const password: string = process.env.CRYPTO_PASSWORD || "";
+    const iv = crypto.randomBytes(16);
+    const key = password_derive_bytes(password, "", 100, 32);
+    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+    const passThroughStream = new stream.PassThrough();
+    passThroughStream.pipe(cipher);
+
     const transaction = await client.$transaction(async (prisma) => {
       const userUploadedFile = await prisma.file.create({
         data: {
@@ -170,27 +175,20 @@ export const uploadfile = async (req: AuthenticatedRequest, res: Response) => {
           filename: file.originalname,
           userId: user.id,
           visibleTo: "PRIVATE",
-          key: "FEW",
-          iv: "Dw",
+          key: key.toString("hex"),
+          iv: iv.toString("hex"),
           status: "PENDING",
         },
       });
 
       try {
-        const s3UploadPromise = uploadfiletos3(
-          passThroughStream,
-          s3key,
-          file.mimetype
-        );
-
+        const s3UploadPromise = uploadfiletos3(cipher, s3key, file.mimetype);
+        passThroughStream.end(file.buffer);
         const s3Response = await s3UploadPromise;
-
         await prisma.file.update({
           where: { id: userUploadedFile.id },
           data: { status: "COMPLETED" },
         });
-
-        passThroughStream.end(file.buffer);
 
         return { s3Response, userUploadedFile };
       } catch (s3Error) {
@@ -238,3 +236,29 @@ export const getAllFiles = async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ error: error.message || "Somethig failed" });
   }
 };
+
+function sha1(input: Buffer) {
+  return crypto.createHash("sha1").update(input).digest();
+}
+
+function password_derive_bytes(
+  password: string,
+  salt: string,
+  iterations: number,
+  len: number
+) {
+  let key = Buffer.from(password + salt);
+  for (let i = 0; i < iterations; i++) {
+    key = sha1(key);
+  }
+  if (key.length < len) {
+    let hx = password_derive_bytes(password, salt, iterations - 1, 20);
+    for (let counter = 1; key.length < len; ++counter) {
+      key = Buffer.concat([
+        key,
+        sha1(Buffer.concat([Buffer.from(counter.toString()), hx])),
+      ]);
+    }
+  }
+  return Buffer.alloc(len, key);
+}
