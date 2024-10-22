@@ -20,16 +20,19 @@ app.use(
     credentials: true,
   })
 );
-
-// app.use(express.static(path.join(__dirname, "../../frontend/dist")));
-
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
+  app.use("/*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../../frontend/dist.index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send("API is running..");
+  });
+}
 app.use("/users", userRouter);
 app.use("/files", fileRouter);
 app.use("/auth", authRouter);
-
-// app.use("/*", (req, res) => {
-//   res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
-// });
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");

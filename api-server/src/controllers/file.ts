@@ -28,22 +28,14 @@ export const getFilePublic = async (req: Request, res: Response) => {
     const s3Stream = await getFileFromS3(file);
     const key = Buffer.from(file.key, "hex");
     const iv = Buffer.from(file.iv, "hex");
-
-    // Create a decipher stream for AES-256-CBC
     const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    s3Stream.pipe(decipher).pipe(res);
 
-    // Pipe the S3 stream through the decipher and then to the response
-    s3Stream
-      .pipe(decipher) // Decrypt the file stream
-      .pipe(res); // Pipe the decrypted stream to the response
-
-    // Error handling for the S3 stream
     s3Stream.on("error", (err) => {
       console.error("Error streaming file from S3:", err);
       res.status(500).json({ message: "Error retrieving file" });
     });
 
-    // Error handling for the decipher stream
     decipher.on("error", (err) => {
       console.error("Error decrypting the file:", err);
       res.status(500).json({ message: "Error decrypting file" });
