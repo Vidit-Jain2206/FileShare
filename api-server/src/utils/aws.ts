@@ -11,7 +11,7 @@ const s3 = new AWS.S3({
 export const uploadfiletos3 = async (
   stream: Readable,
   key: string,
-  mimetype: string
+  mimetype?: string
 ): Promise<any> => {
   const s3Params = {
     Bucket: process.env.AWS_BUCKET_NAME || "",
@@ -27,11 +27,7 @@ export const uploadfiletos3 = async (
   });
 };
 
-export const getFileFromS3 = async (file: {
-  id: string;
-  s3Key: string;
-  filename: string;
-}) => {
+export const getFileFromS3 = async (file: { s3Key: string }) => {
   try {
     const s3Strema = await s3
       .getObject({
@@ -60,4 +56,18 @@ export const getPresignedUrl = async (file: {
   } catch (error: any) {
     throw new Error(error.message || "Internal Server Error");
   }
+};
+export const deleteObjectFromS3 = async (s3Key: string) => {
+  s3.deleteObject(
+    {
+      Bucket: process.env.AWS_BUCKET_NAME || "",
+      Key: s3Key,
+    },
+    (err, data) => {
+      if (err) {
+        throw new Error(err.message || "Failed to upload");
+      }
+      return data;
+    }
+  );
 };
